@@ -17,26 +17,14 @@
 #include <SFE_BMP180.h>
 #include <SFE_CC3000_Client.h>
 #include <PubSubClient.h>
+
+#include "log.h"
 #include "topics.h"
 #include "drive.h"
+#include "sensors.h"
 
-#define DEBUG
-
-#ifdef DEBUG
-#  define LOG(message) \
-  Serial.println(F("[log] " message));
-#  define PANIC(message) \
-  Serial.println(F("[panic] " message)); \
-  while (1) ;
-#else
-#  define LOG(message) ;
-#  define PANIC(message) ;
-#endif
-
-Adafruit_LSM303 accelerometer;
-Adafruit_L3GD20 gyro;
-SFE_BMP180 temperature;
 Drive drive;
+Sensors sensors;
 
 SFE_CC3000 wifi = SFE_CC3000(2, 7, 10);
 SFE_CC3000_Client wifiClient = SFE_CC3000_Client(wifi);
@@ -54,10 +42,8 @@ void setup() {
   Serial.begin(9600);
 #endif
 
-  LOG("==========================================================================");
-
-  LOG("Initializing motor shield...");
   drive.begin();
+  sensors.begin();
 
   LOG("Initializing WiFi shield...");
   while (!wifi.init()) {
@@ -87,55 +73,15 @@ void setup() {
     delay(500);
   }
 
-  LOG("Initializing accelerometer...");
-  if (!accelerometer.begin()) {
-    PANIC("error initializing accelerometer");
-  }
-
-  LOG("Initializing gyro...");
-  if (!gyro.begin(Adafruit_L3GD20::L3DS20_RANGE_250DPS)) {
-    PANIC("error initializing gyro");
-  }
-
-  LOG("Initializing pressure/temperature sensor...");
-  if (!temperature.begin()) {
-    PANIC("Error initializing pressure/temperature sensor");
-  }
-
   LOG("Starting main loop.");
 }
 
-/*
- * Publish all of the sensor data and control the motors
- */
 void loop() {
   // Publish everything every 100 milliseconds
   unsigned long currentTime = millis();
   if (currentTime > lastPublishTime + 100) {
     lastPublishTime = currentTime;
-
-    temperature.startTemperature();
-    accelerometer.read();
-    gyro.read();
-
-    // Publish the robot acceleration and magnometer reading
-    mqttClient.publish(getTopicString(ROBOT_ACCELEROMETER_X), (byte *)&accelerometer.accelData.x, 4);
-    mqttClient.publish(getTopicString(ROBOT_ACCELEROMETER_Y), (byte *)&accelerometer.accelData.y, 4);
-    mqttClient.publish(getTopicString(ROBOT_ACCELEROMETER_Z), (byte *)&accelerometer.accelData.z, 4);
-    mqttClient.publish(getTopicString(ROBOT_MAGNETOMETER_X), (byte *)&accelerometer.magData.x, 4);
-    mqttClient.publish(getTopicString(ROBOT_MAGNETOMETER_Y), (byte *)&accelerometer.magData.y, 4);
-    mqttClient.publish(getTopicString(ROBOT_MAGNETOMETER_Z), (byte *)&accelerometer.magData.z, 4);
-
-    // Publish the gyro readings
-    mqttClient.publish(getTopicString(ROBOT_GYROSCOPE_X), (byte *)&gyro.data.x, 4);
-    mqttClient.publish(getTopicString(ROBOT_GYROSCOPE_Y), (byte *)&gyro.data.y, 4);
-    mqttClient.publish(getTopicString(ROBOT_GYROSCOPE_Z), (byte *)&gyro.data.z, 4);
-
-    // Publish the temperature
-    double temp;
-    temperature.getTemperature(temp);
-    float t32 = (float) temp;
-    mqttClient.publish(getTopicString(ROBOT_TEMPERATURE), (byte *)&t32, 4);
+    sensors.publish(mqttClient);
   }
 
   mqttClient.loop();
@@ -153,21 +99,9 @@ void onPublish(char *topic, byte *payload, unsigned int len) {
   Serial.println(F("}"));
 #endif
 
-  // For any robot/motor/+ topics, unpack the float into a motor speed
-  // and set the specified motor.
+  // For any robot/motor/+ topics, pass the message along to the Drive class
   if (strncmp(topic, "robot/motor/", strlen("robot/motor/")) == 0) {
-    float speed = *(float *) payload;
-    if (strcmp_P(topic, ROBOT_MOTOR_FRONT_LEFT) == 0) {
-      drive.setFrontLeft(speed);
-    } else if (strcmp_P(topic, ROBOT_MOTOR_BACK_LEFT) == 0) {
-      drive.setBackLeft(speed);
-    } else if (strcmp_P(topic, ROBOT_MOTOR_FRONT_RIGHT) == 0) {
-      drive.setFrontRight(speed);
-    } else if (strcmp_P(topic, ROBOT_MOTOR_BACK_RIGHT) == 0) {
-      drive.setBackRight(speed);
-    } else {
-      LOG("Unrecognized motor topic");
-    }
+    drive.onPublish(topic, payload, len);
   }
 }
 
