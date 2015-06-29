@@ -18,6 +18,7 @@
 #include <SFE_CC3000_Client.h>
 #include <PubSubClient.h>
 #include "topics.h"
+#include "drive.h"
 
 #define DEBUG
 
@@ -32,14 +33,10 @@
 #  define PANIC(message) ;
 #endif
 
-Adafruit_MotorShield motorShield = Adafruit_MotorShield();
-Adafruit_DCMotor *frontLeftMotor = motorShield.getMotor(1);
-Adafruit_DCMotor *backLeftMotor = motorShield.getMotor(2);
-Adafruit_DCMotor *frontRightMotor = motorShield.getMotor(3);
-Adafruit_DCMotor *backRightMotor = motorShield.getMotor(4);
 Adafruit_LSM303 accelerometer;
 Adafruit_L3GD20 gyro;
 SFE_BMP180 temperature;
+Drive drive;
 
 SFE_CC3000 wifi = SFE_CC3000(2, 7, 10);
 SFE_CC3000_Client wifiClient = SFE_CC3000_Client(wifi);
@@ -60,7 +57,7 @@ void setup() {
   LOG("==========================================================================");
 
   LOG("Initializing motor shield...");
-  motorShield.begin();
+  drive.begin();
 
   LOG("Initializing WiFi shield...");
   while (!wifi.init()) {
@@ -156,38 +153,21 @@ void onPublish(char *topic, byte *payload, unsigned int len) {
   Serial.println(F("}"));
 #endif
 
-  // For any robot/motor/+ topics, unpack the float into a motor command and
-  // the speed of the specified motor.
-  if (strncmp(topic, "robot/motor/", 12) == 0) {
-    float motorPayload = *(float *) payload;
-    byte motorCommand, motorSpeed;
-
-    if (motorPayload > 0.001f) {
-      motorCommand = FORWARD;
-      motorSpeed = 255 * motorPayload;
-    } else if (motorPayload < -0.001f) {
-      motorCommand = BACKWARD;
-      motorSpeed = 255 * -motorPayload;
-    } else {
-      motorCommand = BRAKE;
-      motorSpeed = 0;
-    }
-
-    Adafruit_DCMotor *motor;
+  // For any robot/motor/+ topics, unpack the float into a motor speed
+  // and set the specified motor.
+  if (strncmp(topic, "robot/motor/", strlen("robot/motor/")) == 0) {
+    float speed = *(float *) payload;
     if (strcmp_P(topic, ROBOT_MOTOR_FRONT_LEFT) == 0) {
-      motor = frontLeftMotor;
+      drive.setFrontLeft(speed);
     } else if (strcmp_P(topic, ROBOT_MOTOR_BACK_LEFT) == 0) {
-      motor = backLeftMotor;
+      drive.setBackLeft(speed);
     } else if (strcmp_P(topic, ROBOT_MOTOR_FRONT_RIGHT) == 0) {
-      motor = frontRightMotor;
+      drive.setFrontRight(speed);
     } else if (strcmp_P(topic, ROBOT_MOTOR_BACK_RIGHT) == 0) {
-      motor = backRightMotor;
+      drive.setBackRight(speed);
     } else {
       LOG("Unrecognized motor topic");
     }
-
-    motor->setSpeed(motorSpeed);
-    motor->run(motorCommand);
   }
 }
 
