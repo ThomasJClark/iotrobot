@@ -6,12 +6,16 @@
 
 #include "log.h"
 
+#define FILTER_CONSTANT 0.95f
+
 class Sensors {
   Adafruit_LSM303 m_accelerometer;
   Adafruit_L3GD20 m_gyro;
   SFE_BMP180 m_temperatureSensor;
 
   float m_temperature;
+  float m_filteredRoll, m_filteredPitch;
+  unsigned long m_lastCalcTime;
 
 public:
   void begin() {
@@ -50,6 +54,12 @@ public:
     m_temperatureSensor.startTemperature();
     m_accelerometer.read();
     m_gyro.read();
+    
+    m_gyro.data.x += 0.09185684634;
+    m_gyro.data.y -= 4.49060166228;
+    m_gyro.data.z += 1.28516079974;
+    
+    calculateAngles();
 
     // Publish the robot acceleration and magnometer reading
     mqttClient.publish(getTopicString(ROBOT_ACCELEROMETER_X), (byte *)&m_accelerometer.accelData.x, 4);
@@ -69,6 +79,44 @@ public:
     m_temperatureSensor.getTemperature(temperature);
     m_temperature = (float) temperature;
     mqttClient.publish(getTopicString(ROBOT_TEMPERATURE), (byte *)&m_temperature, 4);
+
+    // Publish the roll and pitch
+    mqttClient.publish(getTopicString(ROBOT_ANGLE_ROLL), (byte *)&m_filteredRoll, 4);
+    mqttClient.publish(getTopicString(ROBOT_ANGLE_PITCH), (byte *)&m_filteredPitch, 4);
+  }
+
+private:
+  /*
+   * Calculate the filtered roll and pitch
+   */
+  void calculateAngles() {
+    float dt;
+    if (!m_lastCalcTime) {
+      m_lastCalcTime = millis();
+      return;
+    } else {
+      unsigned long currentTime = millis();
+      dt = 0.001f * (currentTime - m_lastCalcTime);
+      m_lastCalcTime = currentTime;
+    }
+
+    const float accelX = m_accelerometer.accelData.x,
+        accelY = m_accelerometer.accelData.y,
+        accelZ = m_accelerometer.accelData.z,
+        gyroX = m_gyro.data.x,
+        gyroY = m_gyro.data.y,
+        gyroZ = m_gyro.data.z,
+        accelX2 = m_accelerometer.accelData.x * m_accelerometer.accelData.x,
+        accelY2 = m_accelerometer.accelData.y * m_accelerometer.accelData.y,
+        accelZ2 = m_accelerometer.accelData.z * m_accelerometer.accelData.z;
+
+    const float roll = degrees(-atan2(accelX, sqrt(accelY2 + accelZ2)));
+    m_filteredRoll = FILTER_CONSTANT * (m_filteredRoll + gyroY * dt)
+        + (1 - FILTER_CONSTANT) * roll;
+        
+    const float pitch = degrees(atan2(accelY, sqrt(accelX2 + accelZ2)));
+    m_filteredPitch = FILTER_CONSTANT * (m_filteredPitch + gyroX * dt)
+        + (1 - FILTER_CONSTANT) * pitch;
   }
 };
 

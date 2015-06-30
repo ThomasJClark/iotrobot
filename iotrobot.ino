@@ -32,8 +32,6 @@ SFE_CC3000_Client wifiClient = SFE_CC3000_Client(wifi);
 byte BROKER_ADDRESS[] = {192, 168, 1, 1};
 PubSubClient mqttClient(BROKER_ADDRESS, 1883, onPublish, wifiClient);
 
-unsigned long lastPublishTime = 0;
-
 /*
  * Intitialize all of the peripherals and set up a network connection
  */
@@ -51,7 +49,7 @@ void setup() {
   }
 
   LOG("Connecting to access point...");
-  while (!wifi.connect("utx", WLAN_SEC_WPA2, "redhat123", 10000)) {
+  while (!wifi.connect("nuc", WLAN_SEC_WPA2, "redhat123", 10000)) {
     LOG("Error connecting to access point.");
     delay(1000);
     LOG("Retrying...");
@@ -77,12 +75,8 @@ void setup() {
 }
 
 void loop() {
-  // Publish everything every 100 milliseconds
-  unsigned long currentTime = millis();
-  if (currentTime > lastPublishTime + 100) {
-    lastPublishTime = currentTime;
-    sensors.publish(mqttClient);
-  }
+  // Publish everything
+  sensors.publish(mqttClient);
 
   mqttClient.loop();
 }
