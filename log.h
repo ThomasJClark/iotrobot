@@ -4,7 +4,7 @@
 #ifndef LOG_H
 #define LOG_H
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #  define LOG(message) \

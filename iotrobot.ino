@@ -82,17 +82,6 @@ void loop() {
 }
 
 void onPublish(char *topic, byte *payload, unsigned int len) {
-#ifdef DEBUG
-  Serial.print(F("[message] \""));
-  Serial.print(topic);
-  Serial.print("\": {");
-  for (int i = 0; i < len; i++) {
-    Serial.print((int) payload[i], HEX);
-    Serial.print(',');
-  }
-  Serial.println(F("}"));
-#endif
-
   // For any robot/motor/+ topics, pass the message along to the Drive class
   if (strncmp(topic, "robot/motor/", strlen("robot/motor/")) == 0) {
     drive.onPublish(topic, payload, len);
