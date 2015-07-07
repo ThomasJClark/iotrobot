@@ -56,13 +56,10 @@ void setup() {
   }
 
   LOG("Connecting to MQTT broker...");
-  char *id = "iotrobot-A";
-  while (!mqttClient.connect(id, "admin", "admin")) {
+  while (!mqttClient.connect("iotrobot", "admin", "admin")) {
     LOG("Error connecting to MQTT broker.");
     delay(1000);
     LOG("Retrying...");
-    id[9]++;
-    Serial.println(id);
   }
 
   LOG("subscribing to control topics...");
