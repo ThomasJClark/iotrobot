@@ -1,5 +1,20 @@
 /*
- * drive.h - Class that encapsulates IMU and temperature sensors
+ * sensors.h - Class that encapsulates IMU and temperature sensors
+ * Copyright (C) 2015 Red Hat, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #ifndef SENSORS_H
 #define SENSORS_H
@@ -24,11 +39,11 @@ public:
     if (!m_accelerometer.begin()) {
       PANIC("error initializing accelerometer");
     }
-  
+
     if (!m_gyro.begin(Adafruit_L3GD20::L3DS20_RANGE_250DPS)) {
       PANIC("error initializing gyro");
     }
-  
+
     if (!m_temperatureSensor.begin()) {
       PANIC("Error initializing pressure/temperature sensor");
     }
@@ -54,11 +69,11 @@ public:
     m_temperatureSensor.startTemperature();
     m_accelerometer.read();
     m_gyro.read();
-    
+
     m_gyro.data.x += 0.09185684634;
     m_gyro.data.y -= 4.49060166228;
     m_gyro.data.z += 1.28516079974;
-    
+
     calculateAngles();
 
     // Publish the robot acceleration and magnometer reading
@@ -113,7 +128,7 @@ private:
     const float roll = degrees(-atan2(accelX, sqrt(accelY2 + accelZ2)));
     m_filteredRoll = FILTER_CONSTANT * (m_filteredRoll + gyroY * dt)
         + (1 - FILTER_CONSTANT) * roll;
-        
+
     const float pitch = degrees(atan2(accelY, sqrt(accelX2 + accelZ2)));
     m_filteredPitch = FILTER_CONSTANT * (m_filteredPitch + gyroX * dt)
         + (1 - FILTER_CONSTANT) * pitch;
@@ -121,4 +136,3 @@ private:
 };
 
 #endif /* SENSORS_H */
-
