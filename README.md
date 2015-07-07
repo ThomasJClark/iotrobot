@@ -10,7 +10,7 @@ To compile the Arduino sketch, these libraries must be installed:
  *   https://github.com/sparkfun/SFE_CC3000_Library
  *   https://github.com/knolleary/pubsubclient/
 
-The sketch attempts to connect to connect to an AP with SSID "nuc" and connect to an MQTT broker on the AP.  For the demo, this is an Intel NUC running JBoss Fuse 6.2.0.
+The sketch attempts to connect to connect to an AP with SSID "nuc" and connect to an MQTT broker on the AP.  The actual SSID/password combination can be changed to the correct one by editing `iotrobot.ino`.  For the demo, this is an Intel NUC running JBoss Fuse 6.2.0.
 
 ## Python Clients
 To run the Python client, paho-mqtt, Pygame, and PyOpenGL must be installed.
